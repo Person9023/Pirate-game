@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Pirate Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --navy: #0b1f33;
+    --gold: #d4af37;
+    --parchment: #f3e6c8;
+    --red: #b5342c;
+    --green: #2e7d32;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Georgia', 'Trebuchet MS', serif;
+    background: linear-gradient(160deg, var(--navy), #14314f);
+    color: var(--parchment);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 {
+    text-align: center;
+    font-size: 2.1em;
+    letter-spacing: 1px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+    margin-bottom: 4px;
+  }
+  .subtitle { text-align: center; opacity: 0.75; margin-bottom: 28px; font-size: 0.9em; }
+  .card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(212,175,55,0.4);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  input, button {
+    font-family: inherit;
+    font-size: 1em;
+    border-radius: 6px;
+    border: none;
+    padding: 10px 14px;
+  }
+  input {
+    width: 100%;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.9);
+    color: #111;
+  }
+  button {
+    background: var(--gold);
+    color: #12233a;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  #screen-join { max-width: 420px; margin: 60px auto 0; }
+  .tabbtn {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    flex: 1;
+  }
+  .tabbtn.active { background: var(--gold); color: #12233a; }
+  .hidden { display: none !important; }
+  .player-list { list-style: none; padding: 0; margin: 0; }
+  .player-list li {
+    display: flex; justify-content: space-between;
+    padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .player-list li .host-tag { color: var(--gold); font-size: 0.8em; margin-left: 6px; }
+  .grid-wrap { display: flex; justify-content: center; margin: 14px 0; }
+  table.pboard { border-collapse: collapse; }
+  table.pboard th, table.pboard td {
+    width: 34px; height: 34px; text-align: center;
+    border: 1px solid rgba(212,175,55,0.35);
+    font-size: 0.75em;
+  }
+  table.pboard th { color: var(--gold); }
+  td.called-good { background: rgba(46,125,50,0.55); }
+  td.called-bad { background: rgba(181,52,44,0.55); }
+  td.called-neutral { background: rgba(212,175,55,0.35); }
+  .callout {
+    text-align: center; font-size: 1.4em; margin: 10px 0;
+    color: var(--gold); font-weight: bold;
+  }
+  .reveal-banner {
+    text-align: center; padding: 10px; border-radius: 8px;
+    margin-bottom: 12px; font-weight: bold;
+  }
+  .reveal-banner.good { background: rgba(46,125,50,0.35); }
+  .reveal-banner.bad { background: rgba(181,52,44,0.35); }
+  .reveal-banner.neutral { background: rgba(255,255,255,0.08); }
+  #log {
+    max-height: 160px; overflow-y: auto; font-size: 0.85em;
+    background: rgba(0,0,0,0.25); border-radius: 8px; padding: 10px;
+  }
+  #log div { margin-bottom: 4px; opacity: 0.9; }
+  table.scores { width: 100%; border-collapse: collapse; }
+  table.scores td, table.scores th { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center; z-index: 50;
+  }
+  .modal {
+    background: #12233a; border: 2px solid var(--gold); border-radius: 10px;
+    padding: 24px; max-width: 400px; width: 90%; text-align: center;
+  }
+  .modal h3 { color: var(--gold); margin-top: 0; }
+  .opt-btn { display: block; width: 100%; margin: 6px 0; }
+  .sq-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+  .sq-grid button { padding: 8px 0; font-size: 0.8em; }
+  .buzzer {
+    font-size: 1.6em; padding: 24px; width: 100%; background: var(--red); color: white;
+  }
+  .error-msg { color: #ff9d9d; text-align: center; margin-top: 8px; min-height: 1.2em; }
+  .setup-progress { text-align: center; font-weight: bold; color: var(--gold); margin: 8px 0; }
+  #palette { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+  .item-btn {
+    background: rgba(255,255,255,0.1); color: var(--parchment);
+    border: 2px solid rgba(212,175,55,0.4); font-size: 0.78em; padding: 8px 10px;
+  }
+  .item-btn.armed { background: var(--gold); color: #12233a; border-color: var(--gold); }
+  .item-btn:disabled { opacity: 0.25; }
+  td.settable { cursor: pointer; }
+  td.filled { background: rgba(212,175,55,0.25); font-weight: bold; cursor: pointer; }
+  td.current-call { outline: 3px solid var(--gold); outline-offset: -3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏴‍☠️ The Pirate Game</h1>
+  <div class="subtitle">Push your luck. Watch your back.</div>
+
+  <!-- JOIN / CREATE SCREEN -->
+  <div id="screen-join">
+    <div class="card">
+      <div class="row" style="margin-bottom:14px;">
+        <button class="tabbtn active" id="tab-create">Host a Game</button>
+        <button class="tabbtn" id="tab-join">Join a Game</button>
+      </div>
+      <div id="pane-create">
+        <input id="create-name" placeholder="Your name">
+        <button id="btn-create" style="width:100%;">Create Room</button>
+      </div>
+      <div id="pane-join" class="hidden">
+        <input id="join-code" placeholder="Room code (e.g. ABCD)" maxlength="4" style="text-transform:uppercase;">
+        <input id="join-name" placeholder="Your name">
+        <button id="btn-join" style="width:100%;">Join Room</button>
+      </div>
+      <div class="error-msg" id="join-error"></div>
+    </div>
+  </div>
+
+  <!-- LOBBY SCREEN -->
+  <div id="screen-lobby" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0;">Room Code: <span id="lobby-code" style="color:var(--gold)"></span></h3>
+      <p style="opacity:0.75;">Share this code with your crew. 4–25 players.</p>
+      <ul class="player-list" id="lobby-players"></ul>
+      <button id="btn-start" class="hidden" style="width:100%; margin-top:14px;">Start Game</button>
+      <p id="lobby-wait" style="opacity:0.7; text-align:center; margin-top:10px;">Waiting for the host to start...</p>
+    </div>
+  </div>
+
+  <!-- SETUP / BOARD-BUILDER SCREEN -->
+  <div id="screen-setup" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0;">Build Your Board</h3>
+      <p style="opacity:0.8; font-size:0.9em;">Place every item below onto your grid, one per square. Tap an item, then tap an empty square. Tap a filled square to take it back.</p>
+      <div class="setup-progress" id="setup-count">0 / 49 placed</div>
+      <div class="grid-wrap">
+        <table class="pboard" id="setup-board"></table>
+      </div>
+      <div id="palette"></div>
+      <button id="btn-submit-board" style="width:100%; margin-top:14px;" disabled>Submit Board (49/49 needed)</button>
+      <div class="error-msg" id="setup-error"></div>
+    </div>
+    <div class="card hidden" id="setup-waiting-card">
+      <p style="text-align:center;">Board submitted! Waiting for other players... <span id="setup-ready-count"></span></p>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game" class="hidden">
+    <div class="callout" id="callout">Waiting for first square...</div>
+    <div id="reveal-banner" class="reveal-banner neutral hidden"></div>
+
+    <div class="card">
+      <div class="grid-wrap">
+        <table class="pboard" id="pboard"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px;">Scoreboard</h3>
+      <table class="scores">
+        <thead><tr><th>Player</th><th>Round</th><th>Banked</th><th>Total</th><th>🛡️/🪞</th></tr></thead>
+        <tbody id="score-body"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px;">Log</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="screen-over" class="hidden">
+    <div class="card">
+      <h2 style="color:var(--gold); text-align:center;">🏆 Game Over</h2>
+      <table class="scores" id="final-scores"></table>
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+let ws;
+let myId = null;
+let myRoom = null;
+let isHost = false;
+let myBoard = {}; // coord -> cell, the board I built and submitted
+
+// setup-phase local state
+let setupRemaining = [];   // array of {type,value?} not yet placed
+let setupPlaced = {};      // coord -> {type,value?}
+let armedIndex = null;     // index into setupRemaining currently selected
+
+function show(id) {
+  ["screen-join","screen-lobby","screen-setup","screen-game","screen-over"].forEach(s => {
+    document.getElementById(s).classList.toggle("hidden", s !== id);
+  });
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onmessage = (ev) => handleMessage(JSON.parse(ev.data));
+  ws.onclose = () => console.log("Disconnected");
+}
+connect();
+
+function send(obj) { ws.send(JSON.stringify(obj)); }
+
+// ---- Join screen tabs ----
+document.getElementById("tab-create").onclick = () => {
+  document.getElementById("tab-create").classList.add("active");
+  document.getElementById("tab-join").classList.remove("active");
+  document.getElementById("pane-create").classList.remove("hidden");
+  document.getElementById("pane-join").classList.add("hidden");
+};
+document.getElementById("tab-join").onclick = () => {
+  document.getElementById("tab-join").classList.add("active");
+  document.getElementById("tab-create").classList.remove("active");
+  document.getElementById("pane-join").classList.remove("hidden");
+  document.getElementById("pane-create").classList.add("hidden");
+};
+
+document.getElementById("btn-create").onclick = () => {
+  const name = document.getElementById("create-name").value.trim() || "Host";
+  send({type: "create_room", name});
+};
+document.getElementById("btn-join").onclick = () => {
+  const code = document.getElementById("join-code").value.trim().toUpperCase();
+  const name = document.getElementById("join-name").value.trim() || "Player";
+  if (!code) { document.getElementById("join-error").textContent = "Enter a room code."; return; }
+  send({type: "join_room", room: code, name});
+};
+document.getElementById("btn-start").onclick = () => send({type: "start_game"});
+
+function ABILITY_LABEL(a) {
+  return {
+    rob: "Rob Someone's Points", kill: "Kill Someone", present: "Present (give 1000)",
+    swap: "Swap Scores", choose_next: "Choose Next Square", mirror: "Mirror",
+    bomb: "Bomb", double: "Double Your Score", shield: "Shield", bank: "Bank Your Score",
+    cash: "Cash", blank: "Nothing"
+  }[a] || a;
+}
+function CLASSIFY(type) {
+  if (["cash","present","double","shield","mirror","bank"].includes(type)) return "good";
+  if (["bomb","kill","rob"].includes(type)) return "bad";
+  return "neutral";
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case "room_created":
+      myId = msg.player_id; myRoom = msg.room; isHost = true;
+      document.getElementById("lobby-code").textContent = myRoom;
+      show("screen-lobby");
+      break;
+    case "joined":
+      myId = msg.player_id; myRoom = msg.room; isHost = false;
+      document.getElementById("lobby-code").textContent = myRoom;
+      show("screen-lobby");
+      break;
+    case "error":
+      document.getElementById("join-error").textContent = msg.message;
+      break;
+    case "lobby_update":
+      renderLobby(msg.players, msg.host_id);
+      break;
+    case "setup_start":
+      startSetupPhase(msg.items, msg.coords);
+      break;
+    case "setup_progress":
+      document.getElementById("setup-ready-count").textContent = `(${msg.ready}/${msg.total} ready)`;
+      break;
+    case "game_started":
+      show("screen-game");
+      buildFullBoard(myBoard);
+      break;
+    case "square_called":
+      document.getElementById("callout").textContent = `Round ${msg.round} — Square Called: ${msg.coord}`;
+      document.getElementById("reveal-banner").classList.add("hidden");
+      highlightCalled(msg.coord);
+      break;
+    case "your_reveal":
+      handleReveal(msg.coord, msg.cell);
+      break;
+    case "buzzer_prompt":
+      showBuzzerModal(msg.ability);
+      break;
+    case "defend_prompt":
+      showDefendModal(msg.ability, msg.actor, msg.options);
+      break;
+    case "buzzer_result":
+      addLog(`⚡ Buzz-in order for ${ABILITY_LABEL(msg.ability)}: ${msg.order.join(" → ")} (slowest acts first)`);
+      break;
+    case "target_prompt":
+      showTargetModal(msg.ability, msg.options);
+      break;
+    case "square_prompt":
+      showSquareModal(msg.available);
+      break;
+    case "log":
+      addLog(msg.text);
+      break;
+    case "scores_update":
+      renderScores(msg.players);
+      break;
+    case "game_over":
+      renderGameOver(msg.final_scores);
+      show("screen-over");
+      break;
+  }
+}
+
+function renderLobby(players, hostId) {
+  const ul = document.getElementById("lobby-players");
+  ul.innerHTML = "";
+  players.forEach(p => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${p.name}${p.id === hostId ? '<span class="host-tag">HOST</span>' : ''}</span><span>${p.connected ? '🟢' : '🔴'}</span>`;
+    ul.appendChild(li);
+  });
+  const startBtn = document.getElementById("btn-start");
+  const waitMsg = document.getElementById("lobby-wait");
+  if (isHost) {
+    startBtn.classList.remove("hidden");
+    waitMsg.classList.add("hidden");
+    startBtn.disabled = players.length < 4;
+    startBtn.textContent = players.length < 4 ? `Need ${4 - players.length} more player(s)` : "Start Game";
+  } else {
+    startBtn.classList.add("hidden");
+    waitMsg.classList.remove("hidden");
+  }
+}
+
+function buildTableSkeleton(table, cellIdPrefix) {
+  table.innerHTML = "";
+  const cols = ["A","B","C","D","E","F","G"];
+  const headRow = document.createElement("tr");
+  headRow.appendChild(document.createElement("th"));
+  cols.forEach(c => { const th = document.createElement("th"); th.textContent = c; headRow.appendChild(th); });
+  table.appendChild(headRow);
+  for (let r = 1; r <= 7; r++) {
+    const tr = document.createElement("tr");
+    const th = document.createElement("th"); th.textContent = r; tr.appendChild(th);
+    cols.forEach(c => {
+      const td = document.createElement("td");
+      td.id = `${cellIdPrefix}-${c}${r}`;
+      td.dataset.coord = `${c}${r}`;
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  }
+}
+
+function cellShortLabel(cell) {
+  if (cell.type === "cash") return cell.value;
+  if (cell.type === "blank") return "—";
+  return cell.type.slice(0,2).toUpperCase();
+}
+
+function buildFullBoard(board) {
+  const table = document.getElementById("pboard");
+  buildTableSkeleton(table, "cell");
+  Object.keys(board).forEach(coord => {
+    const el = document.getElementById(`cell-${coord}`);
+    if (!el) return;
+    const cell = board[coord];
+    el.textContent = cellShortLabel(cell);
+    el.title = ABILITY_LABEL(cell.type);
+    el.className = "filled";
+  });
+}
+
+function highlightCalled(coord) {
+  const el = document.getElementById(`cell-${coord}`);
+  if (el) el.classList.add("current-call");
+}
+
+function handleReveal(coord, cell) {
+  const cls = CLASSIFY(cell.type);
+  const cellEl = document.getElementById(`cell-${coord}`);
+  if (cellEl) {
+    cellEl.classList.remove("called-good","called-bad","called-neutral");
+    cellEl.classList.add(cls === "good" ? "called-good" : (cls === "bad" ? "called-bad" : "called-neutral"));
+  }
+  const banner = document.getElementById("reveal-banner");
+  banner.classList.remove("hidden","good","bad","neutral");
+  banner.classList.add(cls);
+  const label = cell.type === "cash" ? `+${cell.value} cash!` : ABILITY_LABEL(cell.type);
+  banner.textContent = `You revealed: ${label}`;
+}
+
+// ---- Setup / board-builder phase ----
+function startSetupPhase(items, coords) {
+  show("screen-setup");
+  document.getElementById("setup-waiting-card").classList.add("hidden");
+  document.getElementById("btn-submit-board").disabled = true;
+  setupRemaining = items.map(i => ({...i}));
+  setupPlaced = {};
+  armedIndex = null;
+  const table = document.getElementById("setup-board");
+  buildTableSkeleton(table, "setup-cell");
+  renderSetupBoard();
+  renderPalette();
+}
+
+function renderSetupBoard() {
+  document.querySelectorAll("#setup-board td").forEach(td => {
+    const coord = td.dataset.coord;
+    const cell = setupPlaced[coord];
+    if (cell) {
+      td.textContent = cellShortLabel(cell);
+      td.title = ABILITY_LABEL(cell.type) + " (tap to remove)";
+      td.className = "filled";
+    } else {
+      td.textContent = "";
+      td.title = "";
+      td.className = "settable";
+    }
+    td.onclick = () => onSetupCellClick(coord);
+  });
+  const count = Object.keys(setupPlaced).length;
+  document.getElementById("setup-count").textContent = `${count} / 49 placed`;
+  const btn = document.getElementById("btn-submit-board");
+  btn.disabled = count !== 49;
+  btn.textContent = count === 49 ? "Submit Board" : `Submit Board (${count}/49 placed)`;
+}
+
+function groupKey(item) { return item.type + (item.value !== undefined ? ":" + item.value : ""); }
+
+function renderPalette() {
+  const palette = document.getElementById("palette");
+  palette.innerHTML = "";
+  const groups = {};
+  setupRemaining.forEach((item, idx) => {
+    const k = groupKey(item);
+    if (!groups[k]) groups[k] = {item, count: 0, indices: []};
+    groups[k].count++;
+    groups[k].indices.push(idx);
+  });
+  Object.values(groups).forEach(g => {
+    const label = g.item.type === "cash" ? `💰 ${g.item.value}` : ABILITY_LABEL(g.item.type);
+    const btn = document.createElement("button");
+    btn.className = "item-btn" + (armedIndex !== null && groupKey(setupRemaining[armedIndex]) === groupKey(g.item) ? " armed" : "");
+    btn.textContent = `${label} (${g.count})`;
+    btn.onclick = () => { armedIndex = g.indices[0]; renderPalette(); };
+    palette.appendChild(btn);
+  });
+  if (setupRemaining.length === 0) {
+    palette.innerHTML = "<p style='opacity:0.7;'>All items placed. Tap a square to swap items around, or submit below.</p>";
+  }
+}
+
+function onSetupCellClick(coord) {
+  if (setupPlaced[coord]) {
+    // take item back off the board
+    setupRemaining.push(setupPlaced[coord]);
+    delete setupPlaced[coord];
+    renderSetupBoard();
+    renderPalette();
+    return;
+  }
+  if (armedIndex === null || !setupRemaining[armedIndex]) {
+    document.getElementById("setup-error").textContent = "Select an item from the list below first.";
+    return;
+  }
+  document.getElementById("setup-error").textContent = "";
+  setupPlaced[coord] = setupRemaining[armedIndex];
+  setupRemaining.splice(armedIndex, 1);
+  armedIndex = null;
+  renderSetupBoard();
+  renderPalette();
+}
+
+document.getElementById("btn-submit-board").onclick = () => {
+  if (Object.keys(setupPlaced).length !== 49) return;
+  myBoard = {...setupPlaced};
+  send({type: "submit_board", board: myBoard});
+  document.getElementById("setup-waiting-card").classList.remove("hidden");
+  document.getElementById("btn-submit-board").disabled = true;
+};
+
+function renderScores(players) {
+  const tbody = document.getElementById("score-body");
+  tbody.innerHTML = "";
+  players.sort((a,b) => b.total - a.total).forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${p.name}${p.id===myId?' (you)':''}</td><td>${p.round_score}</td><td>${p.banked_score}</td><td><b>${p.total}</b></td><td>${p.shields}/${p.mirrors}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderGameOver(finals) {
+  const table = document.getElementById("final-scores");
+  table.innerHTML = "<tr><th>Rank</th><th>Player</th><th>Total</th></tr>";
+  finals.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i+1}${i===0 ? ' 🏆' : ''}</td><td>${p.name}</td><td>${p.total}</td>`;
+    table.appendChild(tr);
+  });
+}
+
+function addLog(text) {
+  const log = document.getElementById("log");
+  const div = document.createElement("div");
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ---- Modals ----
+function clearModal() { document.getElementById("modal-root").innerHTML = ""; }
+
+function showBuzzerModal(ability) {
+  clearModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Tie! ${ABILITY_LABEL(ability)}</h3>
+      <p>Multiple players revealed this. Slower reactions go first!<br>Tap when ready:</p>
+      <button class="buzzer" id="buzz-btn">BUZZ</button>
+    </div>`;
+  document.getElementById("modal-root").appendChild(overlay);
+  document.getElementById("buzz-btn").onclick = () => {
+    send({type: "buzz"});
+    clearModal();
+  };
+}
+
+function showTargetModal(ability, options) {
+  clearModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const btns = options.map(o => `<button class="opt-btn" data-id="${o.id}">${o.name}</button>`).join("");
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>${ABILITY_LABEL(ability)}</h3>
+      <p>Choose your target:</p>
+      ${btns}
+    </div>`;
+  document.getElementById("modal-root").appendChild(overlay);
+  overlay.querySelectorAll(".opt-btn").forEach(btn => {
+    btn.onclick = () => {
+      send({type: "choose_target", target_id: btn.dataset.id});
+      clearModal();
+    };
+  });
+}
+
+function showDefendModal(ability, actorName, options) {
+  clearModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const btnLabels = { shield: "🛡️ Use a Shield (block it)", mirror: "🪞 Use a Mirror (reflect it back)", none: "Take the hit" };
+  const btns = options.map(o => `<button class="opt-btn" data-c="${o}">${btnLabels[o]}</button>`).join("");
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>${actorName} used ${ABILITY_LABEL(ability)} on you!</h3>
+      <p>Defend yourself, or take it on the chin.</p>
+      ${btns}
+    </div>`;
+  document.getElementById("modal-root").appendChild(overlay);
+  overlay.querySelectorAll("button[data-c]").forEach(btn => {
+    btn.onclick = () => {
+      send({type: "choose_defense", choice: btn.dataset.c});
+      clearModal();
+    };
+  });
+}
+
+function showSquareModal(available) {
+  clearModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const grid = available.map(c => `<button data-c="${c}">${c}</button>`).join("");
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Choose the Next Square</h3>
+      <div class="sq-grid">${grid}</div>
+    </div>`;
+  document.getElementById("modal-root").appendChild(overlay);
+  overlay.querySelectorAll("button[data-c]").forEach(btn => {
+    btn.onclick = () => {
+      send({type: "choose_square", coord: btn.dataset.c});
+      clearModal();
+    };
+  });
+}
+</script>
+</body>
+</html>
